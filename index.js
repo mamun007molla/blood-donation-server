@@ -5,11 +5,9 @@ const port = process.env.PORT || 5000;
 const app = express();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const crypto = require("crypto");
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Firebase admin setup
 const admin = require("firebase-admin");
 const decoded = Buffer.from(process.env.FB_KEY, "base64").toString("utf-8");
 const serviceAccount = JSON.parse(decoded);
@@ -18,7 +16,7 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-// Verify Firebase Token
+
 const verifyToken = async (req, res, next) => {
   const authorization = req.headers.authorization;
   if (!authorization?.startsWith("Bearer ")) {
@@ -39,12 +37,12 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
-// Home Route
+
 app.get("/", (req, res) => {
   res.send("hello mission scic");
 });
 
-// MongoDB
+
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster.dm91gwq.mongodb.net/?appName=Cluster`;
 
@@ -58,23 +56,21 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     const database = client.db("missionscic11");
     const userColl = database.collection("users");
     const requestColl = database.collection("requests");
     const payColl = database.collection("payments");
 
-    /* ============================
-                USERS
-       ============================ */
+  
 
-    // Dashboard Stats
+    
   app.get("/dashboard/stats", verifyToken, async (req, res) => {
   const totalDonors = await userColl.countDocuments({ role: "donor" });
   const totalRequests = await requestColl.countDocuments();
 
-  // calculate total funding
+  
   const payments = await payColl.find().toArray();
   const totalFunding = payments.reduce((sum, p) => sum + p.amount, 0);
 
@@ -86,7 +82,6 @@ async function run() {
 });
 
 
-    // CREATE USER
     app.post("/users", async (req, res) => {
       const user = req.body;
       user.createdAt = new Date();
@@ -97,13 +92,13 @@ async function run() {
       res.send(result);
     });
 
-    // GET ALL USERS
+    
     app.get("/users", verifyToken, async (req, res) => {
       const result = await userColl.find().toArray();
       res.send(result);
     });
 
-    // UPDATE USER ROLE/STATUS
+  
     app.patch("/users/update/:id", async (req, res) => {
       const id = req.params.id;
       const updateData = req.body;
@@ -116,7 +111,7 @@ async function run() {
       res.send(result);
     });
 
-    // UPDATE USER BY EMAIL
+    
     app.patch("/users/update/:email", async (req, res) => {
       const email = req.params.email;
       const updateData = req.body;
@@ -131,18 +126,16 @@ async function run() {
       res.send(result);
     });
 
-    // GET USER ROLE
+    
     app.get("/users/role/:email", async (req, res) => {
       const { email } = req.params;
       const result = await userColl.findOne({ email: email });
       res.send(result || { role: null, status: null });
     });
 
-    /* ============================
-              REQUESTS
-       ============================ */
+   
 
-    // CREATE REQUEST
+    
     app.post("/requests", verifyToken, async (req, res) => {
       const request = req.body;
       request.createdAt = new Date();
@@ -151,7 +144,7 @@ async function run() {
       res.send(result);
     });
 
-    // GET ALL PENDING REQUESTS (PUBLIC)
+    
     app.get("/requests/pending", async (req, res) => {
       try {
         const query = { donationStatus: "pending" };
@@ -163,7 +156,7 @@ async function run() {
       }
     });
 
-    // GET SINGLE REQUEST
+    
     app.get("/requests/:id", async (req, res) => {
       const { id } = req.params;
 
@@ -171,7 +164,7 @@ async function run() {
       res.send(result);
     });
 
-    // GET USER REQUESTS + PAGINATION + FILTER (Donor Page)
+    
     app.get("/requests/user/:email", async (req, res) => {
       const email = req.params.email;
 
@@ -197,7 +190,7 @@ async function run() {
       res.send({ total, result });
     });
 
-    // GET ALL REQUESTS (Admin + Volunteer Page)
+    
     app.get("/requests", async (req, res) => {
       try {
         const page = parseInt(req.query.page) || 1;
@@ -226,7 +219,7 @@ async function run() {
       }
     });
 
-    // DELETE REQUEST (Admin Only)
+    
     app.delete("/requests/:id", async (req, res) => {
       const id = req.params.id;
 
@@ -234,7 +227,7 @@ async function run() {
       res.send(result);
     });
 
-    // UPDATE REQUEST STATUS (Admin + Volunteer)
+    
     app.patch("/requests/update-status/:id", async (req, res) => {
       const id = req.params.id;
       const { donationStatus } = req.body;
@@ -247,7 +240,7 @@ async function run() {
       res.send(result);
     });
 
-    // UPDATE REQUEST FULL DATA (Admin + Donor)
+    
     app.patch("/requests/:id", async (req, res) => {
       const id = req.params.id;
       const updateData = req.body;
@@ -292,7 +285,7 @@ async function run() {
       }
     });
 
-    // STRIPE PAYMENT INTENT
+  
     app.post("/create-payment-checkout", async (req, res) => {
       const info = req.body;
       const amount = parseInt(info.donateAmount) * 100;
@@ -340,7 +333,7 @@ async function run() {
         return res.send({success:true,message:'Payment recorded',result});
       }
 
-      // Save donation info to database
+      
       await donationColl.insertOne({
         donorName,
         donorEmail,
@@ -352,8 +345,8 @@ async function run() {
       res.send({ success: true });
     });
 
-    // DB CONNECT STATUS CHECK
-    await client.db("admin").command({ ping: 1 });
+    
+    // await client.db("admin").command({ ping: 1 });
     console.log("MongoDB Connected ✔️");
   } finally {
   }
@@ -361,7 +354,6 @@ async function run() {
 
 run().catch(console.dir);
 
-// Server start
 app.listen(port, () => {
   console.log(`server is running http://localhost:${port}`);
 });

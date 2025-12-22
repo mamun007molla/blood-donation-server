@@ -1,3 +1,4 @@
 node_modules
 .env
 pawmartclient321-firebase-adminsdk-fbsvc-454f49385a.json
+.vercel
